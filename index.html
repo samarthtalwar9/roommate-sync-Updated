@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Roommate Sync</title>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+
+<!-- Our files — ORDER MATTERS -->
+<link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="nav-inner">
+    <div class="nav-logo" onclick="showPage('landing')">
+      <span class="logo-text">Roommate Sync</span>
+      <span class="logo-sub">AI-Powered Matching v2.0</span>
+    </div>
+    <div class="nav-links" id="nav-public">
+      <span class="nav-link" onclick="goTo('features')">Features</span>
+      <span class="nav-link" onclick="goTo('howitworks')">How It Works</span>
+      <span class="nav-link" onclick="goTo('pricing')">Pricing</span>
+      <span class="nav-link" onclick="goTo('testimonials')">Reviews</span>
+    </div>
+    <div class="nav-links hidden" id="nav-private">
+      <span class="nav-link" onclick="showDash('discover')">Discover</span>
+      <span class="nav-link" onclick="showDash('messages')">Messages</span>
+      <span class="nav-link" onclick="showDash('notifications')" style="display:flex;align-items:center;gap:6px;">
+        Notifications <span class="sb-badge" id="notif-count">0</span>
+      </span>
+    </div>
+    <div class="nav-actions">
+      <div id="nav-auth" class="flex gap8">
+        <button class="btn btn-ghost" onclick="showPage('auth');setTab('login')">Log In</button>
+        <button class="btn btn-primary" onclick="showPage('auth');setTab('signup')">Sign Up Free</button>
+      </div>
+      <div id="nav-user" class="hidden flex center gap10">
+        <button class="notif-btn" onclick="showDash('notifications')">🔔<span class="notif-dot" id="ndot"></span></button>
+        <div class="nav-av" id="nav-av" onclick="showDash('profile')"></div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- TOASTS -->
+<div id="toasts"></div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="handleOverlay(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════
+     LANDING PAGE
+════════════════════════════ -->
+<div id="page-landing" class="page active" style="padding-top:0;">
+  <div class="hero">
+    <div class="hero-bg">
+      <div class="orb orb1"></div>
+      <div class="orb orb2"></div>
+      <div class="orb orb3"></div>
+      <div class="hero-grid"></div>
+    </div>
+    <div class="hero-inner">
+      <div class="hero-pill"><span class="hero-pill-dot"></span>✦ AI-Powered Matching Engine v2.0</div>
+      <h1 class="hero-h1">Find <span class="hero-grad">compatible</span><br>roommates, not just rooms.</h1>
+      <p class="hero-sub">Stop gambling with your living situation. Our algorithm matches you on sleep schedules, cleanliness, budget and vibe — before you sign a lease.</p>
+      <div class="hero-cta">
+        <button class="btn btn-primary btn-lg" onclick="showPage('auth');setTab('signup')">✦ Start Matching Free</button>
+        <button class="btn btn-glass btn-lg" onclick="tryDemo()">▶ Try Demo</button>
+      </div>
+      <div class="trust-row">
+        <span class="trust-item"><span class="trust-check">✓</span> Verified Identity</span>
+        <span class="trust-item"><span class="trust-check">✓</span> 98% Success Rate</span>
+        <span class="trust-item"><span class="trust-check">✓</span> 50,000+ Users</span>
+        <span class="trust-item"><span class="trust-check">✓</span> Free Forever Plan</span>
+      </div>
+      <div class="hero-stats">
+        <div class="hs"><div class="hs-n">50K+</div><div class="hs-l">Active Users</div></div>
+        <div class="hs"><div class="hs-n">98%</div><div class="hs-l">Success Rate</div></div>
+        <div class="hs"><div class="hs-n">2.4M</div><div class="hs-l">Matches Made</div></div>
+        <div class="hs"><div class="hs-n">4.9★</div><div class="hs-l">Avg Rating</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="section" id="features">
+    <div class="sec-eyebrow">✦ Why Roommate Sync</div>
+    <h2 class="sec-h">Everything you need to find<br>the <em>right</em> roommate</h2>
+    <p class="sec-p mb24">We go beyond surface-level to match on what actually matters in daily shared living.</p>
+    <div class="feat-grid">
+      <div class="feat-card"><div class="feat-icon" style="background:rgba(124,58,237,.2)">🧠</div><h3>AI Compatibility Scoring</h3><p>Our algorithm analyzes 47 factors — sleep, noise tolerance, social habits and more — to generate your match score.</p></div>
+      <div class="feat-card"><div class="feat-icon" style="background:rgba(6,182,212,.15)">✓</div><h3>Identity Verification</h3><p>Every user verified via government ID and university or employer email. Real people only — zero catfishing.</p></div>
+      <div class="feat-card"><div class="feat-icon" style="background:rgba(16,185,129,.15)">💬</div><h3>Real-Time Messaging</h3><p>Chat with your matches instantly. Messages delivered in real time — no delays, no email forwarding.</p></div>
+      <div class="feat-card"><div class="feat-icon" style="background:rgba(245,158,11,.15)">💰</div><h3>Budget Compatibility</h3><p>Set your exact rent budget. We only show matches within your financial comfort zone.</p></div>
+      <div class="feat-card"><div class="feat-icon" style="background:rgba(236,72,153,.15)">🌙</div><h3>Circadian Matching</h3><p>Night owls and early birds living together causes conflict. We match based on sleep schedules.</p></div>
+      <div class="feat-card"><div class="feat-icon" style="background:rgba(239,68,68,.15)">🏙️</div><h3>City-Based Matching</h3><p>Find roommates in your exact city. Sign up and immediately see real people looking in the same area.</p></div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="section" id="howitworks" style="padding-top:20px;">
+    <div class="sec-eyebrow ta-c">✦ Simple Process</div>
+    <h2 class="sec-h ta-c">Up and running in minutes</h2>
+    <p class="sec-p ta-c mb24" style="margin:0 auto 52px;">Four steps from sign-up to finding your perfect roommate.</p>
+    <div class="hiw-grid">
+      <div class="hiw-step"><div class="step-n">1</div><h3>Create Profile</h3><p>Sign up with your email, complete your lifestyle quiz and tell us your city.</p></div>
+      <div class="hiw-step"><div class="step-n">2</div><h3>Get Verified</h3><p>We verify your identity within minutes — completely private and secure.</p></div>
+      <div class="hiw-step"><div class="step-n">3</div><h3>Browse Matches</h3><p>See real users from your city ranked by compatibility score.</p></div>
+      <div class="hiw-step"><div class="step-n">4</div><h3>Chat & Move In</h3><p>Message them directly. Real-time chat — no delays, no middlemen.</p></div>
+    </div>
+  </div>
+
+  <!-- TESTIMONIALS -->
+  <div class="section" id="testimonials">
+    <div class="sec-eyebrow ta-c">✦ Success Stories</div>
+    <h2 class="sec-h ta-c">Real people, real results</h2>
+    <p class="sec-p ta-c mb24" style="margin:0 auto 52px;">Thousands of successful roommate matches across India.</p>
+    <div class="test-grid">
+      <div class="test-card"><div class="stars">★★★★★</div><p class="test-text">"The compatibility score was spot on. My roommate and I have been living together 8 months with zero conflicts."</p><div class="flex center gap10"><div class="test-av" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">A</div><div><div class="test-name">Aanya Sharma</div><div class="test-meta">Engineering Student, Pune</div></div></div></div>
+      <div class="test-card"><div class="stars">★★★★★</div><p class="test-text">"Found my roommate in 3 days. The chat is instant — I messaged him and he replied in seconds. Amazing."</p><div class="flex center gap10"><div class="test-av" style="background:linear-gradient(135deg,#06b6d4,#3b82f6)">R</div><div><div class="test-name">Rohan Mehta</div><div class="test-meta">Software Developer, Bangalore</div></div></div></div>
+      <div class="test-card"><div class="stars">★★★★★</div><p class="test-text">"As a woman in a new city, verified profiles made this the only platform I trusted. My roommate is now my best friend."</p><div class="flex center gap10"><div class="test-av" style="background:linear-gradient(135deg,#ec4899,#f59e0b)">K</div><div><div class="test-name">Kavya Patel</div><div class="test-meta">MBA Student, Mumbai</div></div></div></div>
+    </div>
+  </div>
+
+  <!-- PRICING -->
+  <div class="section" id="pricing">
+    <div class="sec-eyebrow ta-c">✦ Pricing</div>
+    <h2 class="sec-h ta-c">Simple, transparent pricing</h2>
+    <p class="sec-p ta-c mb24" style="margin:0 auto 52px;">Start free. Upgrade when you're ready.</p>
+    <div class="price-grid">
+      <div class="price-card">
+        <div class="price-name">Free</div><div class="price-amt"><sup>₹</sup>0<span>/mo</span></div>
+        <p class="price-desc">Perfect for getting started.</p>
+        <ul class="price-feats"><li><span class="chk">✓</span>5 matches per month</li><li><span class="chk">✓</span>Basic compatibility score</li><li><span class="chk">✓</span>Real-time messaging</li><li><span class="chk">✓</span>Identity verification</li><li><span class="crs">✕</span>Unlimited matches</li><li><span class="crs">✕</span>Advanced filters</li></ul>
+        <button class="btn btn-outline btn-full" onclick="showPage('auth');setTab('signup')">Get Started Free</button>
+      </div>
+      <div class="price-card featured">
+        <div class="popular">Most Popular</div>
+        <div class="price-name">Pro</div><div class="price-amt"><sup>₹</sup>299<span>/mo</span></div>
+        <p class="price-desc">For serious seekers who want the best matches fast.</p>
+        <ul class="price-feats"><li><span class="chk">✓</span>Unlimited matches</li><li><span class="chk">✓</span>Full 47-factor AI scoring</li><li><span class="chk">✓</span>Advanced filters</li><li><span class="chk">✓</span>Profile boost 2x/month</li><li><span class="chk">✓</span>Priority support</li><li><span class="chk">✓</span>Verified badge</li></ul>
+        <button class="btn btn-primary btn-full" onclick="showPage('auth');setTab('signup')">Start 7-Day Free Trial</button>
+      </div>
+      <div class="price-card">
+        <div class="price-name">Teams</div><div class="price-amt"><sup>₹</sup>799<span>/mo</span></div>
+        <p class="price-desc">For universities and co-living spaces.</p>
+        <ul class="price-feats"><li><span class="chk">✓</span>Everything in Pro</li><li><span class="chk">✓</span>Bulk onboarding</li><li><span class="chk">✓</span>Admin dashboard</li><li><span class="chk">✓</span>API access</li><li><span class="chk">✓</span>Dedicated manager</li><li><span class="chk">✓</span>SLA guarantee</li></ul>
+        <button class="btn btn-outline btn-full" onclick="openModal('contact')">Contact Sales</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="section">
+    <div class="cta-box">
+      <span class="badge badge-pu mb16">✦ Join 50,000+ Users</span>
+      <h2>Your ideal roommate is<br>already on Roommate Sync.</h2>
+      <p>Sign up free. No credit card required. Start matching in minutes.</p>
+      <button class="btn btn-primary btn-lg" onclick="showPage('auth');setTab('signup')">Start Matching Free →</button>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:800;background:linear-gradient(135deg,#fff 10%,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Roommate Sync</div>
+          <p>Intelligent roommate matching powered by AI. Find people you will actually enjoy living with.</p>
+        </div>
+        <div class="footer-col"><h4>Product</h4><a onclick="goTo('features')">Features</a><a onclick="goTo('pricing')">Pricing</a><a onclick="goTo('howitworks')">How It Works</a></div>
+        <div class="footer-col"><h4>Company</h4><a onclick="openModal('about')">About Us</a><a onclick="openModal('careers')">Careers</a><a onclick="openModal('contact')">Contact</a></div>
+        <div class="footer-col"><h4>Legal</h4><a onclick="openModal('privacy')">Privacy Policy</a><a onclick="openModal('terms')">Terms of Service</a><a onclick="openModal('safety')">Safety Center</a></div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2026 Roommate Sync Inc. All rights reserved.</p>
+        <div class="footer-links"><a onclick="openModal('privacy')">Privacy</a><a onclick="openModal('terms')">Terms</a></div>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════════════════
+     AUTH PAGE
+════════════════════════════ -->
+<div id="page-auth" class="page-flex" style="background:var(--bg);overflow:hidden;">
+  <div class="auth-bg">
+    <div class="auth-orb1"></div>
+    <div class="auth-orb2"></div>
+    <div class="auth-grid"></div>
+  </div>
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-head">
+        <div class="auth-icon">🏠</div>
+        <h2>Roommate Sync</h2>
+        <p id="auth-tag">Find your perfect roommate today</p>
+      </div>
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tab-login" onclick="setTab('login')">Log In</div>
+        <div class="auth-tab" id="tab-signup" onclick="setTab('signup')">Sign Up</div>
+      </div>
+      <div class="social-row">
+        <button class="social-btn" onclick="socialAuth()">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Google
+        </button>
+        <button class="social-btn" onclick="socialAuth()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+          GitHub
+        </button>
+      </div>
+      <div class="divider">or continue with email</div>
+
+      <!-- LOGIN FORM -->
+      <div id="login-form">
+        <div class="auth-form">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <div class="icon-wrap"><span class="inp-icon">✉</span><input class="form-input" id="l-email" type="email" placeholder="you@example.com"/></div>
+            <div class="err-text hidden" id="l-email-err"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <div class="pass-wrap">
+              <input class="form-input" id="l-pass" type="password" placeholder="Enter your password"/>
+              <button class="pass-toggle" onclick="togglePass('l-pass',this)">👁</button>
+            </div>
+            <div class="err-text hidden" id="l-pass-err"></div>
+          </div>
+          <div class="forgot" onclick="openModal('forgot')">Forgot password?</div>
+          <button class="btn btn-primary btn-full" id="btn-login" onclick="doLogin()" style="margin-top:4px;">Continue to Dashboard →</button>
+        </div>
+      </div>
+
+      <!-- SIGNUP FORM -->
+      <div id="signup-form" class="hidden">
+        <div class="auth-form">
+          <div class="name-grid">
+            <div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="s-fname" type="text" placeholder="Nakul"/><div class="err-text hidden" id="s-fname-err"></div></div>
+            <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="s-lname" type="text" placeholder="Chinchole"/></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <div class="icon-wrap"><span class="inp-icon">✉</span><input class="form-input" id="s-email" type="email" placeholder="you@example.com"/></div>
+            <div class="err-text hidden" id="s-email-err"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <div class="pass-wrap">
+              <input class="form-input" id="s-pass" type="password" placeholder="Min. 6 characters" oninput="checkStrength(this.value)"/>
+              <button class="pass-toggle" onclick="togglePass('s-pass',this)">👁</button>
+            </div>
+            <div class="strength-bar"><div class="strength-seg" id="sg1"></div><div class="strength-seg" id="sg2"></div><div class="strength-seg" id="sg3"></div><div class="strength-seg" id="sg4"></div></div>
+            <div class="strength-label" id="sg-lbl"></div>
+            <div class="err-text hidden" id="s-pass-err"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Your City</label>
+            <select class="form-select" id="s-city">
+              <option value="">Select your city</option>
+              <option>Mumbai</option><option>Delhi</option><option>Bangalore</option>
+              <option>Pune</option><option>Nagpur</option><option>Hyderabad</option>
+              <option>Chennai</option><option>Kolkata</option><option>Ahmedabad</option>
+              <option>Jaipur</option><option>Surat</option><option>Other</option>
+            </select>
+            <div class="err-text hidden" id="s-city-err"></div>
+          </div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.55;">By signing up you agree to our <span style="color:var(--accent2);cursor:pointer" onclick="openModal('terms')">Terms</span> and <span style="color:var(--accent2);cursor:pointer" onclick="openModal('privacy')">Privacy Policy</span>.</p>
+          <button class="btn btn-primary btn-full" id="btn-signup" onclick="doSignup()" style="margin-top:4px;">Create Free Account →</button>
+        </div>
+      </div>
+
+      <div class="auth-footer-txt">
+        <span id="auth-sw-text">Don't have an account? </span>
+        <span class="lnk" id="auth-sw-link" onclick="toggleTab()">Sign up free</span>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:14px;">
+      <button class="btn btn-ghost fs13" onclick="showPage('landing')">← Back to Home</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════
+     ONBOARDING
+════════════════════════════ -->
+<div id="page-onboard" class="page-flex" style="background:var(--bg);">
+  <div class="ob-wrap">
+    <div class="ob-card">
+      <div class="ob-prog-track"><div class="ob-prog-fill" id="ob-fill" style="width:14%"></div></div>
+      <div class="ob-prog-txt" id="ob-txt">Step 1 of 7</div>
+      <div class="ob-step active" data-step="1">
+        <h2>Who are you? 👋</h2><p class="ob-sub">This helps us personalise your matches.</p>
+        <div class="ob-opts">
+          <button class="ob-opt" onclick="pickOpt(this,'role')"><span class="ob-icon">🎓</span>University Student</button>
+          <button class="ob-opt" onclick="pickOpt(this,'role')"><span class="ob-icon">💼</span>Working Professional</button>
+          <button class="ob-opt" onclick="pickOpt(this,'role')"><span class="ob-icon">🏢</span>Intern / Trainee</button>
+          <button class="ob-opt" onclick="pickOpt(this,'role')"><span class="ob-icon">🌐</span>Other</button>
+        </div>
+      </div>
+      <div class="ob-step" data-step="2">
+        <h2>When do you sleep? 🌙</h2><p class="ob-sub">Sleep conflicts are the #1 cause of roommate issues.</p>
+        <div class="ob-opts">
+          <button class="ob-opt" onclick="pickOpt(this,'sleep')"><span class="ob-icon">🌅</span>Early Bird (10pm–6am)</button>
+          <button class="ob-opt" onclick="pickOpt(this,'sleep')"><span class="ob-icon">🕙</span>Regular (11pm–7am)</button>
+          <button class="ob-opt" onclick="pickOpt(this,'sleep')"><span class="ob-icon">🌙</span>Night Owl (1am–9am)</button>
+          <button class="ob-opt" onclick="pickOpt(this,'sleep')"><span class="ob-icon">🦉</span>Very Late (3am+)</button>
+        </div>
+      </div>
+      <div class="ob-step" data-step="3">
+        <h2>How clean are you? 🧹</h2><p class="ob-sub">No judgement — we need to find someone on your wavelength.</p>
+        <div class="ob-opts">
+          <button class="ob-opt" onclick="pickOpt(this,'clean')"><span class="ob-icon">✨</span>Spotless always</button>
+          <button class="ob-opt" onclick="pickOpt(this,'clean')"><span class="ob-icon">🙂</span>Tidy but relaxed</button>
+          <button class="ob-opt" onclick="pickOpt(this,'clean')"><span class="ob-icon">😌</span>Messy but manageable</button>
+          <button class="ob-opt" onclick="pickOpt(this,'clean')"><span class="ob-icon">🤷</span>Chaos is comfort</button>
+        </div>
+      </div>
+      <div class="ob-step" data-step="4">
+        <h2>Social life at home? 🎉</h2><p class="ob-sub">How often do you have people over?</p>
+        <div class="ob-opts">
+          <button class="ob-opt" onclick="pickOpt(this,'social')"><span class="ob-icon">🏠</span>Very private, rarely</button>
+          <button class="ob-opt" onclick="pickOpt(this,'social')"><span class="ob-icon">🤝</span>Friends occasionally</button>
+          <button class="ob-opt" onclick="pickOpt(this,'social')"><span class="ob-icon">🎊</span>Regular hangouts</button>
+          <button class="ob-opt" onclick="pickOpt(this,'social')"><span class="ob-icon">🥳</span>Often and lively</button>
+        </div>
+      </div>
+      <div class="ob-step" data-step="5">
+        <h2>What's your budget? 💰</h2><p class="ob-sub">Monthly rent you're comfortable paying (₹).</p>
+        <div class="ob-slider-group">
+          <div class="ob-slider-label">Min Rent <span id="sl-min">₹5,000</span></div>
+          <input type="range" min="2000" max="30000" value="5000" step="500" oninput="updateSlider(this,'sl-min','₹','',true)"/>
+        </div>
+        <div class="ob-slider-group">
+          <div class="ob-slider-label">Max Rent <span id="sl-max">₹15,000</span></div>
+          <input type="range" min="2000" max="50000" value="15000" step="500" oninput="updateSlider(this,'sl-max','₹','',true)"/>
+        </div>
+        <div class="ob-opts" style="margin-top:12px;">
+          <button class="ob-opt" onclick="pickOpt(this,'split')"><span class="ob-icon">⚖️</span>Equal split</button>
+          <button class="ob-opt" onclick="pickOpt(this,'split')"><span class="ob-icon">📐</span>By room size</button>
+          <button class="ob-opt" onclick="pickOpt(this,'split')"><span class="ob-icon">💡</span>By usage</button>
+          <button class="ob-opt" onclick="pickOpt(this,'split')"><span class="ob-icon">🤝</span>Flexible</button>
+        </div>
+      </div>
+      <div class="ob-step" data-step="6">
+        <h2>A few more habits 🧘</h2><p class="ob-sub">Select all that apply.</p>
+        <div class="ob-opts" style="grid-template-columns:1fr 1fr 1fr;">
+          <button class="ob-opt" onclick="this.classList.toggle('sel')"><span class="ob-icon">🚭</span>Non-smoker</button>
+          <button class="ob-opt" onclick="this.classList.toggle('sel')"><span class="ob-icon">🐾</span>Pet-friendly</button>
+          <button class="ob-opt" onclick="this.classList.toggle('sel')"><span class="ob-icon">🥗</span>Vegetarian</button>
+          <button class="ob-opt" onclick="this.classList.toggle('sel')"><span class="ob-icon">💪</span>Gym-goer</button>
+          <button class="ob-opt" onclick="this.classList.toggle('sel')"><span class="ob-icon">🎮</span>Gamer</button>
+          <button class="ob-opt" onclick="this.classList.toggle('sel')"><span class="ob-icon">📖</span>Studious</button>
+          <button class="ob-opt" onclick="this.classList.toggle('sel')"><span class="ob-icon">🎵</span>Music lover</button>
+          <button class="ob-opt" onclick="this.classList.toggle('sel')"><span class="ob-icon">🍳</span>Home cook</button>
+          <button class="ob-opt" onclick="this.classList.toggle('sel')"><span class="ob-icon">🌿</span>Eco-conscious</button>
+        </div>
+      </div>
+      <div class="ob-step" data-step="7">
+        <h2>Almost done! 🎉</h2><p class="ob-sub">What are you primarily looking for?</p>
+        <div class="ob-opts">
+          <button class="ob-opt" onclick="pickOpt(this,'looking')"><span class="ob-icon">🏠</span>I need a room</button>
+          <button class="ob-opt" onclick="pickOpt(this,'looking')"><span class="ob-icon">👥</span>I have a room, need roommate</button>
+          <button class="ob-opt" onclick="pickOpt(this,'looking')"><span class="ob-icon">🔍</span>Just browsing</button>
+          <button class="ob-opt" onclick="pickOpt(this,'looking')"><span class="ob-icon">🌟</span>Open to both</button>
+        </div>
+      </div>
+      <div class="ob-nav">
+        <button class="btn btn-ghost" id="ob-back" onclick="obBack()" style="visibility:hidden">← Back</button>
+        <span class="ob-info" id="ob-info">Step 1 of 7</span>
+        <button class="btn btn-primary" id="ob-next" onclick="obNext()">Continue →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════
+     DASHBOARD
+════════════════════════════ -->
+<div id="page-dash" class="page">
+  <div class="dash-layout">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sb-profile">
+        <div class="sb-av" id="sb-av"></div>
+        <div><div class="sb-name" id="sb-name"></div><div class="sb-plan">Free Plan</div></div>
+      </div>
+      <div class="sb-section">
+        <div class="sb-sec-label">Main</div>
+        <div class="sb-link active" id="sl-discover" onclick="showDash('discover')"><span class="sb-icon">🔍</span> Discover</div>
+        <div class="sb-link" id="sl-messages" onclick="showDash('messages')"><span class="sb-icon">💬</span> Messages <span class="sb-badge" id="msg-badge" style="display:none">0</span></div>
+        <div class="sb-link" id="sl-saved" onclick="showDash('saved')"><span class="sb-icon">❤️</span> Saved</div>
+        <div class="sb-link" id="sl-notifications" onclick="showDash('notifications')"><span class="sb-icon">🔔</span> Notifications</div>
+      </div>
+      <div class="sb-section">
+        <div class="sb-sec-label">Account</div>
+        <div class="sb-link" id="sl-profile" onclick="showDash('profile')"><span class="sb-icon">👤</span> My Profile</div>
+        <div class="sb-link" id="sl-settings" onclick="showDash('settings')"><span class="sb-icon">⚙️</span> Settings</div>
+      </div>
+      <div class="sb-bottom">
+        <div class="sb-upgrade">
+          <h4>✦ Upgrade to Pro</h4>
+          <p>Unlimited matches and advanced filters</p>
+          <button class="btn btn-primary btn-sm btn-full" onclick="openModal('upgrade')">Upgrade — ₹299/mo</button>
+        </div>
+        <div class="sb-link" onclick="doLogout()"><span class="sb-icon">🚪</span> Log Out</div>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="dash-content">
+
+      <!-- DISCOVER -->
+      <div class="dash-section active" id="dash-discover">
+        <div class="dash-topbar">
+          <div><h1>Discover Matches</h1><p class="text2 fs13 mt4">Real users from your city, ranked by compatibility</p></div>
+          <div class="topbar-right">
+            <button class="btn btn-glass btn-sm" onclick="openModal('filters')">⚙ Filters</button>
+            <button class="btn btn-primary btn-sm" onclick="openModal('upgrade')">✦ Upgrade</button>
+          </div>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-num" id="stat-matches" style="color:var(--accent2)">—</div><div class="stat-lbl">People in Your City</div><div class="stat-change up" id="stat-matches-sub">Loading...</div></div>
+          <div class="stat-card"><div class="stat-num" style="color:var(--accent3)">89%</div><div class="stat-lbl">Avg Compatibility</div><div class="stat-change up">↑ High quality</div></div>
+          <div class="stat-card"><div class="stat-num" id="stat-convs" style="color:var(--green)">0</div><div class="stat-lbl">Active Conversations</div><div class="stat-change up">Real-time chat</div></div>
+          <div class="stat-card"><div class="stat-num" id="stat-saved" style="color:var(--yellow)">0</div><div class="stat-lbl">Saved Profiles</div><div class="stat-change" style="color:var(--muted)">View all</div></div>
+        </div>
+        <div class="filter-bar">
+          <button class="chip active" onclick="applyFilter(this,'all')">All Matches</button>
+          <button class="chip" onclick="applyFilter(this,'90plus')">90%+ Match</button>
+          <button class="chip" onclick="applyFilter(this,'students')">Students</button>
+          <button class="chip" onclick="applyFilter(this,'pros')">Professionals</button>
+          <div class="filter-sep"></div>
+          <select class="sort-sel" onchange="doSort(this.value)">
+            <option value="compat">Sort: Compatibility</option>
+            <option value="new">Sort: Newest</option>
+          </select>
+        </div>
+        <div class="matches-grid" id="matches-grid">
+          <div class="empty-state"><div class="icon">🔍</div><h3>Loading matches...</h3><p>Finding people in your city</p></div>
+        </div>
+      </div>
+
+      <!-- MESSAGES -->
+      <div class="dash-section" id="dash-messages">
+        <div class="dash-topbar"><h1>Messages</h1><p class="text2 fs13">Real-time conversations with your matches</p></div>
+        <div class="msg-layout">
+          <div class="msg-list">
+            <div class="msg-list-hdr">Conversations</div>
+            <div class="conv-list" id="conv-list"></div>
+          </div>
+          <div class="chat-area" id="chat-area">
+            <div class="empty-state"><div class="icon">💬</div><h3>Select a conversation</h3><p>Choose someone from the left to start chatting</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SAVED -->
+      <div class="dash-section" id="dash-saved">
+        <div class="dash-topbar"><h1>Saved Profiles</h1></div>
+        <div class="matches-grid" id="saved-grid">
+          <div class="empty-state"><div class="icon">❤️</div><h3>No saved profiles yet</h3><p>Heart a match to save them here</p></div>
+        </div>
+      </div>
+
+      <!-- NOTIFICATIONS -->
+      <div class="dash-section" id="dash-notifications">
+        <div class="dash-topbar"><h1>Notifications</h1><button class="btn btn-ghost btn-sm" onclick="markAllRead()">Mark all read</button></div>
+        <div class="notif-list" id="notif-list"></div>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="dash-section" id="dash-profile">
+        <div class="dash-topbar"><h1>My Profile</h1><button class="btn btn-primary btn-sm" onclick="openModal('editProfile')">✏ Edit Profile</button></div>
+        <div class="prof-hdr">
+          <div class="flex gap20 center wrap">
+            <div class="prof-av-lg"><span id="pr-letter"></span></div>
+            <div>
+              <div class="prof-name" id="pr-name"></div>
+              <div class="prof-meta" id="pr-meta">Loading...</div>
+              <div class="flex wrap gap6 mt12">
+                <span class="badge badge-gr">✓ Verified</span>
+                <span class="badge badge-pu">Free Plan</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="card card-p">
+            <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">About Me</h3>
+            <div class="info-row"><span class="info-lbl">Role</span><span class="info-val" id="pr-role">—</span></div>
+            <div class="info-row"><span class="info-lbl">Sleep Schedule</span><span class="info-val" id="pr-sleep">—</span></div>
+            <div class="info-row"><span class="info-lbl">Cleanliness</span><span class="info-val" id="pr-clean">—</span></div>
+            <div class="info-row"><span class="info-lbl">Social Life</span><span class="info-val" id="pr-social">—</span></div>
+            <div class="info-row"><span class="info-lbl">Budget</span><span class="info-val" id="pr-budget">—</span></div>
+            <div class="info-row"><span class="info-lbl">Looking For</span><span class="info-val" id="pr-looking">—</span></div>
+          </div>
+          <div>
+            <div class="card card-p mb16">
+              <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">Habits</h3>
+              <div class="flex wrap gap6" id="pr-habits"><span class="muted fs12">Complete onboarding to see habits</span></div>
+            </div>
+            <div class="card card-p">
+              <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">Profile Strength</h3>
+              <div style="height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;"><div style="width:0%;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width .5s;" id="pr-strength"></div></div>
+              <p class="fs12 text2 mt8" id="pr-strength-txt">Complete your profile</p>
+              <button class="btn btn-outline btn-sm btn-full mt12" onclick="openModal('editProfile')">Complete Profile</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="dash-section" id="dash-settings">
+        <div class="dash-topbar"><h1>Settings</h1></div>
+        <div class="settings-layout">
+          <div class="settings-nav">
+            <div class="settings-nav-item active" onclick="showSettings(this,'set-account')">👤 Account</div>
+            <div class="settings-nav-item" onclick="showSettings(this,'set-privacy')">🔒 Privacy</div>
+            <div class="settings-nav-item" onclick="showSettings(this,'set-notifs')">🔔 Notifications</div>
+            <div class="settings-nav-item" onclick="showSettings(this,'set-matching')">🎯 Matching</div>
+            <div class="settings-nav-item" onclick="showSettings(this,'set-danger')">⚠️ Danger Zone</div>
+          </div>
+          <div>
+            <div class="settings-sec active card card-p" id="set-account">
+              <h3>Account Settings</h3><p class="sec-desc">Manage your account details.</p>
+              <div class="flex col gap16">
+                <div class="form-group"><label class="form-label">Display Name</label><input class="form-input" id="set-name" value=""/></div>
+                <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="set-email" value=""/></div>
+                <div class="form-group"><label class="form-label">City</label><select class="form-select" id="set-city"><option>Nagpur</option><option>Mumbai</option><option>Pune</option><option>Bangalore</option><option>Delhi</option><option>Hyderabad</option></select></div>
+                <div class="form-group"><label class="form-label">Bio</label><textarea class="form-input" rows="3" placeholder="Tell roommates about yourself..."></textarea></div>
+                <button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>
+              </div>
+            </div>
+            <div class="settings-sec card card-p" id="set-privacy">
+              <h3>Privacy Settings</h3><p class="sec-desc">Control who can see your profile.</p>
+              <div class="toggle-row"><div class="toggle-info"><h4>Profile Visibility</h4><p>Allow others to find and view your profile</p></div><div class="sw on" onclick="this.classList.toggle('on');toast(this.classList.contains('on')?'Enabled':'Disabled','info')"></div></div>
+              <div class="toggle-row"><div class="toggle-info"><h4>Show Last Active</h4><p>Let matches see when you were last online</p></div><div class="sw on" onclick="this.classList.toggle('on');toast(this.classList.contains('on')?'Enabled':'Disabled','info')"></div></div>
+              <div class="toggle-row"><div class="toggle-info"><h4>Read Receipts</h4><p>Let others know when you read their messages</p></div><div class="sw" onclick="this.classList.toggle('on');toast(this.classList.contains('on')?'Enabled':'Disabled','info')"></div></div>
+            </div>
+            <div class="settings-sec card card-p" id="set-notifs">
+              <h3>Notifications</h3><p class="sec-desc">Choose what you get notified about.</p>
+              <div class="toggle-row"><div class="toggle-info"><h4>New Matches</h4><p>When you get a new compatibility match</p></div><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="toggle-row"><div class="toggle-info"><h4>New Messages</h4><p>When someone sends you a message</p></div><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="toggle-row"><div class="toggle-info"><h4>Profile Views</h4><p>When someone views your profile</p></div><div class="sw on" onclick="this.classList.toggle('on')"></div></div>
+              <div class="toggle-row"><div class="toggle-info"><h4>Marketing Emails</h4><p>Tips and platform updates</p></div><div class="sw" onclick="this.classList.toggle('on')"></div></div>
+            </div>
+            <div class="settings-sec card card-p" id="set-matching">
+              <h3>Matching Preferences</h3><p class="sec-desc">Control your match criteria.</p>
+              <div class="flex col gap16">
+                <div class="form-group"><label class="form-label">Preferred City</label><select class="form-select"><option>Nagpur</option><option>Mumbai</option><option>Pune</option></select></div>
+                <div class="ob-slider-group"><div class="ob-slider-label">Min Compatibility <span id="sl-compat">75%</span></div><input type="range" min="50" max="100" value="75" step="5" oninput="updateSlider(this,'sl-compat','','%')"/></div>
+                <div class="form-group"><label class="form-label">Looking For</label><select class="form-select"><option>Need a room</option><option>Have a room</option><option>Both</option></select></div>
+                <button class="btn btn-primary" onclick="saveSettings()">Save Preferences</button>
+              </div>
+            </div>
+            <div class="settings-sec card card-p" id="set-danger">
+              <h3>Danger Zone</h3><p class="sec-desc">Irreversible actions.</p>
+              <div style="border:1px solid rgba(239,68,68,.2);border-radius:var(--rs);padding:20px;">
+                <h4 style="font-size:14px;font-weight:600;margin-bottom:4px;">Pause Account</h4>
+                <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Temporarily hide your profile.</p>
+                <button class="btn btn-outline btn-sm" onclick="toast('Account paused for 30 days','info')">Pause Account</button>
+                <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px;">
+                  <h4 style="font-size:14px;font-weight:600;margin-bottom:4px;color:#f87171;">Delete Account</h4>
+                  <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Permanently delete. Cannot be undone.</p>
+                  <button class="btn btn-danger btn-sm" onclick="openModal('deleteAcct')">Delete My Account</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end dash-content -->
+  </div><!-- end dash-layout -->
+</div><!-- end page-dash -->
+
+<!-- Scripts — ORDER MATTERS -->
+<script src="firebase.js"></script>
+<script src="script.js"></script>
+
+</body>
+</html>
