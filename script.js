@@ -17,14 +17,36 @@ function $(id){ return document.getElementById(id); }
 function $$(sel){ return document.querySelectorAll(sel); }
 function escHtml(t){ return (t||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+/* ── UI helpers (presentation only) ── */
+function ico(id,cls){ return '<svg class="ic'+(cls?' '+cls:'')+'"><use href="#i-'+id+'"/></svg>'; }
+function emptyHTML(icon,title,text,opts){
+  opts=opts||{};
+  return '<div class="empty-state'+(opts.compact?' compact':'')+'"><div class="es-icon'+(opts.tone?' '+opts.tone:'')+'">'+ico(icon)+'</div>'+
+    (title?'<h3>'+title+'</h3>':'')+(text?'<p>'+text+'</p>':'')+(opts.btn||'')+'</div>';
+}
+function skeletonCards(n){
+  var h=''; for(var i=0;i<(n||3);i++) h+='<div class="match-card skel-card"><div class="skel skel-av"></div><div class="skel skel-l1"></div><div class="skel skel-l2"></div><div class="skel skel-l3"></div></div>';
+  return h;
+}
+/* display only: add a space after a leading emoji stored without one (e.g. "🌙Night Owl") */
+function pretty(t){ return String(t==null?'':t).replace(/^(\p{Extended_Pictographic}\uFE0F?)(?=\S)/u,'$1 '); }
+function scoreTier(n){ return n>=85?'tier-hi':(n>=70?'tier-mid':'tier-lo'); }
+function scoreWord(n){ return n>=90?'Great match':(n>=75?'Good match':(n>=60?'Fair match':'Low match')); }
+function toggleNav(force){
+  var n=$('nav'); if(!n) return;
+  n.classList.toggle('menu-open', typeof force==='boolean' ? force : !n.classList.contains('menu-open'));
+}
+
 /* ══════════════════════════════
    TOAST
 ══════════════════════════════ */
 function toast(msg, type){
-  var icons={success:'✅',error:'❌',info:'ℹ️',warn:'⚠️'};
+  var icons={success:'check',error:'x',info:'info',warn:'alert'};
+  var ty = icons[type||'info'] ? (type||'info') : 'info';
   var t = document.createElement('div');
-  t.className = 'toast';
-  t.innerHTML = (icons[type||'info']||'ℹ️') + ' ' + msg + '<button class="toast-close" onclick="this.parentElement.remove()">✕</button>';
+  t.className = 'toast t-'+ty;
+  t.setAttribute('role', ty==='error'?'alert':'status');
+  t.innerHTML = '<span class="t-ico">'+ico(icons[ty])+'</span><span class="t-msg">'+msg+'</span><button class="toast-close" aria-label="Dismiss" onclick="this.parentElement.remove()">✕</button>';
   $('toasts').appendChild(t);
   setTimeout(function(){ t.classList.add('out'); setTimeout(function(){ if(t.parentNode) t.remove(); }, 300); }, 4500);
 }
@@ -42,6 +64,7 @@ function showPage(p){
   $('nav-private').classList.toggle('hidden', !auth||p==='onboard');
   $('nav-auth').classList.toggle('hidden', auth);
   $('nav-user').classList.toggle('hidden', !auth);
+  toggleNav(false);
   window.scrollTo(0,0);
 }
 
@@ -50,7 +73,10 @@ function showDash(s){
   var d = $('dash-'+s); if(d) d.classList.add('active');
   $$('.sb-link').forEach(function(l){ l.classList.remove('active'); });
   var sl = $('sl-'+s); if(sl) sl.classList.add('active');
+  $$('.mtab').forEach(function(t){ t.classList.remove('active'); });
+  var mt = $('mt-'+s); if(mt) mt.classList.add('active');
   S.dash = s;
+  window.scrollTo(0,0);
   if(s==='notifications') renderNotifs();
   if(s==='saved') renderSaved();
   if(s==='messages') renderConvList(S.convs);
@@ -60,7 +86,7 @@ function goTo(id){
   if(S.page!=='landing'){ showPage('landing'); setTimeout(function(){ sc(id); }, 260); return; }
   sc(id);
 }
-function sc(id){ var e=$(id); if(e) e.scrollIntoView({behavior:'smooth',block:'start'}); }
+function sc(id){ toggleNav(false); var e=$(id); if(e) e.scrollIntoView({behavior:'smooth',block:'start'}); }
 
 /* ══════════════════════════════
    RESET UI — called on logout
@@ -90,13 +116,15 @@ function resetUI(){
   var sp=$('s-pass'); if(sp) sp.value='';
   var sc2=$('s-city'); if(sc2) sc2.value='';
   ['sg1','sg2','sg3','sg4'].forEach(function(id){
-    var e=$(id); if(e) e.style.background='rgba(255,255,255,.08)';
+    var e=$(id); if(e) e.style.background='';
   });
   var lbl=$('sg-lbl'); if(lbl) lbl.textContent='';
-  var mg=$('matches-grid'); if(mg) mg.innerHTML='<div class="empty-state"><div class="icon">🔍</div><h3>Loading matches...</h3><p>Finding people in your city</p></div>';
-  var sg=$('saved-grid'); if(sg) sg.innerHTML='<div class="empty-state"><div class="icon">❤️</div><h3>No saved profiles yet</h3><p>Heart a match to save them here</p></div>';
+  var mg=$('matches-grid'); if(mg) mg.innerHTML=skeletonCards(3);
+  var sg=$('saved-grid'); if(sg) sg.innerHTML=emptyHTML('heart','No saved profiles yet','Heart a match to save them here',{tone:'peach'});
   var cl=$('conv-list'); if(cl) cl.innerHTML='';
-  var ca=$('chat-area'); if(ca) ca.innerHTML='<div class="empty-state"><div class="icon">💬</div><h3>Select a conversation</h3><p>Choose someone from the left to start chatting</p></div>';
+  var ca=$('chat-area'); if(ca) ca.innerHTML=emptyHTML('chat','Select a conversation','Choose someone from the left to start chatting');
+  var dm=$('dash-messages'); if(dm) dm.classList.remove('chat-open');
+  var mtd=$('mt-dot'); if(mtd) mtd.classList.remove('on');
   var sm=$('stat-matches'); if(sm) sm.textContent='—';
   var sc3=$('stat-convs'); if(sc3) sc3.textContent='0';
   var ss=$('stat-saved'); if(ss) ss.textContent='0';
@@ -289,7 +317,7 @@ function loadMatches(){
   if(!uid) return;
   var city = (S.userDoc&&S.userDoc.city) ? S.userDoc.city : '';
   var mg=$('matches-grid');
-  if(mg) mg.innerHTML='<div class="empty-state"><div class="icon">⏳</div><h3>Finding your matches...</h3><p>Looking for people in '+(city||'your city')+'</p></div>';
+  if(mg) mg.innerHTML=skeletonCards(3);
   var query = fbDb.collection('users').where('onboarded','==',true);
   if(city) query = query.where('city','==',city);
   query.limit(20).get().then(function(snap){
@@ -308,7 +336,7 @@ function loadMatches(){
   }).catch(function(e){
     console.error(e);
     var mg=$('matches-grid');
-    if(mg) mg.innerHTML='<div class="empty-state"><div class="icon">😕</div><h3>Could not load matches</h3><p>Make sure Firestore is enabled.</p></div>';
+    if(mg) mg.innerHTML=emptyHTML('alert','Could not load matches','Make sure Firestore is enabled, then try again.',{tone:'peach',btn:'<button class="btn btn-outline btn-sm" onclick="loadMatches()">Try again</button>'});
   });
 }
 
@@ -321,48 +349,59 @@ function calcScore(other){
 }
 
 var COLORS=[
-  'linear-gradient(135deg,#7c3aed,#a855f7)',
-  'linear-gradient(135deg,#06b6d4,#3b82f6)',
-  'linear-gradient(135deg,#ec4899,#f59e0b)',
-  'linear-gradient(135deg,#10b981,#06b6d4)',
-  'linear-gradient(135deg,#f59e0b,#ef4444)',
-  'linear-gradient(135deg,#8b5cf6,#ec4899)'
+  '#FFD9CB','#C9E8D8','#FFE08A','#D6CCFF','#C4E0FF','#F9C3D8'
 ];
+
+/* which of the three scored traits two people share (display only — mirrors calcScore) */
+function sharedTraits(m){
+  var me=S.userDoc||{}, out=[];
+  if(me.sleep  && m.sleep  && me.sleep===m.sleep)   out.push('Sleep');
+  if(me.clean  && m.clean  && me.clean===m.clean)   out.push('Cleanliness');
+  if(me.social && m.social && me.social===m.social) out.push('Social');
+  return out;
+}
+function matchCardHTML(m,idx,mode){
+  var sv=S.savedIds.has(m._uid), col=COLORS[idx%COLORS.length];
+  var name=m.displayName||'Anonymous';
+  var jsName=name.replace(/'/g,"\\'");
+  var tags=[];
+  if(m.sleep)   tags.push(m.sleep.split(' ').slice(0,2).join(' '));
+  if(m.clean)   tags.push(m.clean.split(' ')[0]);
+  if(m.looking) tags.push(m.looking);
+  var shared=sharedTraits(m);
+  var bio=m.bio||(mode==='saved'?'Looking for a roommate.':'Looking for a compatible roommate in '+(m.city||'your city')+'.');
+  var actions = mode==='saved'
+    ? '<button class="btn btn-primary grow btn-sm" onclick="startChat(\''+m._uid+'\',\''+jsName+'\',\''+col+'\')">'+ico('chat')+' Message</button>'+
+      '<button class="btn btn-danger btn-sm" aria-label="Remove from saved" onclick="doSave(\''+m._uid+'\',this)">❤️</button>'
+    : '<button class="btn btn-primary grow btn-sm" onclick="startChat(\''+m._uid+'\',\''+jsName+'\',\''+col+'\')">'+ico('chat')+' Message</button>'+
+      '<button class="btn btn-outline btn-sm'+(sv?' is-saved':'')+'" aria-label="Save profile" onclick="doSave(\''+m._uid+'\',this)">'+(sv?'❤️':'🤍')+'</button>'+
+      '<button class="btn btn-ghost btn-sm" aria-label="View profile" onclick="viewMatch(\''+m._uid+'\')">'+ico('eye')+'</button>';
+  return '<article class="match-card" style="--i:'+Math.min(idx,8)+'">'+
+    '<div class="mc-top">'+
+      '<div class="mc-av" style="background:'+col+'">'+escHtml(name[0].toUpperCase())+'</div>'+
+      '<div class="mc-id">'+
+        '<div class="mc-name">'+escHtml(name)+'</div>'+
+        '<div class="mc-sub">'+escHtml((m.city||'')+((m.city&&m.role)?' · ':'')+pretty(m.role||''))+'</div>'+
+        '<div class="mc-verified">'+ico('shield')+' Verified</div>'+
+      '</div>'+
+      '<div class="mc-score-wrap '+scoreTier(m._score)+'"><div class="mc-score-ring" style="--p:'+m._score+'"><span class="mc-score">'+m._score+'%</span></div><div class="mc-score-lbl">'+scoreWord(m._score)+'</div></div>'+
+    '</div>'+
+    '<div class="mc-body">'+
+      (tags.length?'<div class="mc-tags">'+tags.map(function(t){ return '<span class="mc-tag">'+escHtml(pretty(t))+'</span>'; }).join('')+'</div>':'')+
+      '<p class="mc-bio">'+escHtml(bio)+'</p>'+
+      (shared.length?'<div class="mc-shared">'+ico('check')+' You both match on '+shared.join(' · ').toLowerCase()+'</div>':'')+
+    '</div>'+
+    '<div class="mc-actions">'+actions+'</div>'+
+  '</article>';
+}
 
 function renderMatchCards(list){
   var g=$('matches-grid'); if(!g) return;
   if(!list||!list.length){
-    g.innerHTML='<div class="empty-state"><div class="icon">🏙️</div><h3>No matches yet in your city</h3><p>Invite friends to join Roommate Sync in '+((S.userDoc&&S.userDoc.city)||'your city')+'!</p></div>';
+    g.innerHTML=emptyHTML('pin','No matches yet in your city','Invite friends to join Roommate Sync in '+escHtml((S.userDoc&&S.userDoc.city)||'your city')+'!',{tone:'mint'});
     return;
   }
-  g.innerHTML=list.map(function(m,idx){
-    var sv=S.savedIds.has(m._uid), col=COLORS[idx%COLORS.length];
-    var name=m.displayName||'Anonymous';
-    var tags=[];
-    if(m.sleep)   tags.push(m.sleep.split(' ').slice(0,2).join(' '));
-    if(m.clean)   tags.push(m.clean.split(' ')[0]);
-    if(m.looking) tags.push(m.looking);
-    return '<div class="match-card">'+
-      '<div class="mc-top">'+
-        '<div class="mc-av" style="background:'+col+'">'+name[0].toUpperCase()+'</div>'+
-        '<div style="flex:1">'+
-          '<div class="mc-name">'+name+'</div>'+
-          '<div class="mc-sub">'+(m.city||'')+((m.city&&m.role)?' · ':'')+(m.role||'')+'</div>'+
-          '<div class="mc-verified">✓ Verified</div>'+
-        '</div>'+
-        '<div class="mc-score-wrap"><div class="mc-score-ring"><span class="mc-score">'+m._score+'%</span><div class="mc-score-lbl">Match</div></div></div>'+
-      '</div>'+
-      '<div class="mc-body">'+
-        '<div class="mc-tags">'+tags.map(function(t){ return '<span class="mc-tag">'+t+'</span>'; }).join('')+'</div>'+
-        '<p class="mc-bio">'+(m.bio||'Looking for a compatible roommate in '+(m.city||'your city')+'.')+'</p>'+
-      '</div>'+
-      '<div class="mc-actions">'+
-        '<button class="btn btn-primary grow btn-sm" onclick="startChat(\''+m._uid+'\',\''+name.replace(/'/g,"\\'")+'\',\''+col+'\')">💬 Message</button>'+
-        '<button class="btn btn-outline btn-sm" onclick="doSave(\''+m._uid+'\',this)">'+(sv?'❤️':'🤍')+'</button>'+
-        '<button class="btn btn-ghost btn-sm" onclick="viewMatch(\''+m._uid+'\')">👁</button>'+
-      '</div>'+
-    '</div>';
-  }).join('');
+  g.innerHTML=list.map(function(m,idx){ return matchCardHTML(m,idx,'discover'); }).join('');
 }
 
 function applyFilter(btn,type){
@@ -379,19 +418,17 @@ function doSort(v){
   S.filteredMatches=s; renderMatchCards(s);
 }
 function doSave(uid,btn){
-  if(S.savedIds.has(uid)){ S.savedIds.delete(uid); btn.textContent='🤍'; toast('Removed from saved','info'); }
-  else{ S.savedIds.add(uid); btn.textContent='❤️'; toast('Saved! ❤️','success'); }
+  if(S.savedIds.has(uid)){ S.savedIds.delete(uid); btn.textContent='🤍'; btn.classList.remove('is-saved'); toast('Removed from saved','info'); }
+  else{ S.savedIds.add(uid); btn.textContent='❤️'; btn.classList.add('is-saved'); toast('Saved! ❤️','success'); }
+  btn.classList.remove('heart-pop'); void btn.offsetWidth; btn.classList.add('heart-pop');
   var ss=$('stat-saved'); if(ss) ss.textContent=S.savedIds.size;
   renderSaved();
 }
 function renderSaved(){
   var g=$('saved-grid'); if(!g) return;
   var sv=S.allMatches.filter(function(m){ return S.savedIds.has(m._uid); });
-  if(!sv.length){ g.innerHTML='<div class="empty-state"><div class="icon">❤️</div><h3>No saved profiles yet</h3><p>Heart a match to save them here</p></div>'; return; }
-  g.innerHTML=sv.map(function(m,i){
-    var col=COLORS[i%COLORS.length];
-    return '<div class="match-card"><div class="mc-top"><div class="mc-av" style="background:'+col+'">'+m.displayName[0]+'</div><div style="flex:1"><div class="mc-name">'+m.displayName+'</div><div class="mc-sub">'+(m.city||'')+'</div></div><div class="mc-score-wrap"><span class="mc-score">'+m._score+'%</span><div class="mc-score-lbl">Match</div></div></div><div class="mc-body"><p class="mc-bio">'+(m.bio||'Looking for a roommate.')+'</p></div><div class="mc-actions"><button class="btn btn-primary grow btn-sm" onclick="startChat(\''+m._uid+'\',\''+m.displayName.replace(/'/g,"\\'")+'\',\''+col+'\')">💬 Message</button><button class="btn btn-danger btn-sm" onclick="doSave(\''+m._uid+'\',this)">❤️</button></div></div>';
-  }).join('');
+  if(!sv.length){ g.innerHTML=emptyHTML('heart','No saved profiles yet','Heart a match to save them here',{tone:'peach'}); return; }
+  g.innerHTML=sv.map(function(m,i){ return matchCardHTML(m,i,'saved'); }).join('');
 }
 function viewMatch(uid){
   var m=S.allMatches.find(function(x){ return x._uid===uid; });
@@ -435,6 +472,7 @@ function loadConvList(){
     var unread=Object.values(convs).filter(function(c){ return c.unread; }).length;
     var mb=$('msg-badge');
     if(mb){ mb.textContent=unread; mb.style.display=unread>0?'inline-flex':'none'; }
+    var mtd=$('mt-dot'); if(mtd) mtd.classList.toggle('on', unread>0);
     var sc=$('stat-convs'); if(sc) sc.textContent=keys.length;
   });
 }
@@ -444,7 +482,7 @@ function renderConvList(convs){
   var l=$('conv-list'); if(!l) return;
   var keys=Object.keys(convs);
   if(!keys.length){
-    l.innerHTML='<div class="empty-state" style="padding:30px 16px;"><div class="icon" style="font-size:32px;">💬</div><p style="font-size:12px;">Message a match to start chatting</p></div>';
+    l.innerHTML=emptyHTML('chat','No conversations yet','Message a match to start chatting',{compact:true,tone:'sky'});
     return;
   }
   l.innerHTML=keys.map(function(otherUid,i){
@@ -453,10 +491,10 @@ function renderConvList(convs){
     var col=c.color||COLORS[i%COLORS.length];
     var name=c.name||'User';
     return '<div class="conv-item '+sel+'" onclick="openConv(\''+otherUid+'\',\''+name.replace(/'/g,"\\'")+'\',\''+col+'\')">' +
-      '<div class="conv-av" style="background:'+col+'">'+name[0].toUpperCase()+'</div>' +
+      '<div class="conv-av" style="background:'+col+'">'+escHtml(name[0].toUpperCase())+'</div>' +
       '<div style="flex:1;min-width:0;">'+
-        '<div class="conv-name">'+name+'</div>'+
-        '<div class="conv-preview">'+(c.lastMsg||'Start a conversation...')+'</div>'+
+        '<div class="conv-name">'+escHtml(name)+'</div>'+
+        '<div class="conv-preview">'+escHtml(c.lastMsg||'Start a conversation...')+'</div>'+
       '</div>'+
       '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;">'+
         '<div class="conv-time">'+(c.time||'')+'</div>'+
@@ -495,18 +533,20 @@ function _openConv(otherUid,otherName,otherColor,uid){
   fbRtdb.ref('userConvs/'+uid+'/'+otherUid+'/unread').set(false);
 
   var ca=$('chat-area'); if(!ca) return;
+  var dmEl=$('dash-messages'); if(dmEl) dmEl.classList.add('chat-open');
   ca.innerHTML=
     '<div class="chat-hdr">'+
-      '<div class="conv-av" style="background:'+col+';width:36px;height:36px;flex-shrink:0;">'+otherInit+'</div>'+
-      '<div style="flex:1;">'+
-        '<div class="chat-hdr-name">'+otherName+'</div>'+
+      '<button class="chat-back" aria-label="Back to conversations" onclick="$(\'dash-messages\').classList.remove(\'chat-open\')">'+ico('back')+'</button>'+
+      '<div class="conv-av" style="background:'+col+';width:38px;height:38px;flex-shrink:0;">'+escHtml(otherInit)+'</div>'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div class="chat-hdr-name">'+escHtml(otherName)+'</div>'+
         '<div class="chat-hdr-status">Online</div>'+
       '</div>'+
     '</div>'+
     '<div class="chat-msgs" id="chat-msgs"></div>'+
     '<div class="chat-inp-row">'+
       '<input class="chat-inp" id="cinp" placeholder="Type a message..." autocomplete="off"/>'+
-      '<button class="btn btn-primary btn-sm" onclick="sendMsg(\''+otherUid+'\',\''+chatId+'\',\''+otherName.replace(/'/g,"\\'")+'\',\''+col+'\')">Send ➤</button>'+
+      '<button class="btn btn-primary btn-sm" onclick="sendMsg(\''+otherUid+'\',\''+chatId+'\',\''+otherName.replace(/'/g,"\\'")+'\',\''+col+'\')">Send '+ico('send')+'</button>'+
     '</div>';
 
   var inp=$('cinp');
@@ -526,15 +566,15 @@ function _openConv(otherUid,otherName,otherColor,uid){
     msgArr.sort(function(a,b){ return a.ts-b.ts; });
     var msgsEl=$('chat-msgs'); if(!msgsEl) return;
     if(!msgArr.length){
-      msgsEl.innerHTML='<div class="empty-state" style="height:100%;"><div class="icon">👋</div><h3>Say hello to '+otherName+'!</h3><p>This is the start of your conversation.</p></div>';
+      msgsEl.innerHTML=emptyHTML('chat','Say hello to '+escHtml(otherName)+'!','This is the start of your conversation. Break the ice — ask about their sleep schedule.',{tone:'butter'});
       return;
     }
     msgsEl.innerHTML=msgArr.map(function(m){
       var isMine=m.uid===uid;
       return '<div class="msg-row '+(isMine?'mine':'')+'">' +
-        (!isMine?'<div class="msg-av-sm" style="background:'+col+'">'+otherInit+'</div>':'')+
-        '<div><div class="bubble '+(isMine?'bubble-out':'bubble-in')+'">'+escHtml(m.txt)+'</div><div class="msg-time">'+m.timeStr+'</div></div>'+
-        (isMine?'<div class="msg-av-sm" style="background:linear-gradient(135deg,var(--accent),var(--accent2))">'+userInitial+'</div>':'')+
+        (!isMine?'<div class="msg-av-sm" style="background:'+col+'">'+escHtml(otherInit)+'</div>':'')+
+        '<div><div class="bubble '+(isMine?'bubble-out':'bubble-in')+'">'+escHtml(m.txt)+'</div><div class="msg-time">'+escHtml(m.timeStr||'')+'</div></div>'+
+        (isMine?'<div class="msg-av-sm" style="background:linear-gradient(135deg,var(--accent),var(--accent2))">'+escHtml(userInitial)+'</div>':'')+
       '</div>';
     }).join('');
     msgsEl.scrollTop=msgsEl.scrollHeight;
@@ -615,7 +655,7 @@ function updateSlider(inp,lid,pre,suf,fmt){
   var v=parseInt(inp.value);
   var el=$(lid); if(el) el.textContent=fmt?pre+v.toLocaleString('en-IN'):pre+v+(suf||'');
   var p=((v-inp.min)/(inp.max-inp.min))*100;
-  inp.style.background='linear-gradient(90deg,var(--accent) '+p+'%,rgba(255,255,255,.06) '+p+'%)';
+  inp.style.background='linear-gradient(90deg,var(--accent) '+p+'%,rgba(23,20,15,.1) '+p+'%)';
 }
 
 /* ══════════════════════════════
@@ -627,7 +667,7 @@ var NOTIFS=[
 ];
 function renderNotifs(){
   var l=$('notif-list'); if(!l) return;
-  if(!NOTIFS.length){ l.innerHTML='<div class="empty-state"><div class="icon">🔔</div><h3>All caught up!</h3><p>No new notifications</p></div>'; return; }
+  if(!NOTIFS.length){ l.innerHTML=emptyHTML('bell','All caught up!','No new notifications',{tone:'mint'}); return; }
   l.innerHTML=NOTIFS.map(function(n){
     return '<div class="notif-item '+(n.unread?'unread':'')+'">' +
       '<div class="notif-icon">'+n.icon+'</div>' +
@@ -667,38 +707,44 @@ function saveSettings(){
    MODALS
 ══════════════════════════════ */
 var MODS={
-  forgot:'<h2>Reset Password</h2><p style="color:var(--text2);margin-bottom:16px;">We will email you a reset link.</p><div class="form-group"><label class="form-label">Email</label><input class="form-input" id="r-email" type="email" placeholder="you@example.com"/></div><button class="btn btn-primary btn-full mt16" onclick="doReset()">Send Reset Link</button>',
-  upgrade:'<h2>✦ Upgrade to Pro</h2><p style="color:var(--text2);margin-bottom:16px;">Unlock unlimited matches.</p><div style="background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);border-radius:12px;padding:20px;margin-bottom:20px;"><div style="font-family:Space Grotesk,sans-serif;font-size:38px;font-weight:700;">₹299<span style="font-size:14px;font-weight:400;color:var(--muted)">/month</span></div><ul style="list-style:none;margin-top:12px;display:flex;flex-direction:column;gap:8px;"><li style="font-size:13px;color:var(--text2);">✅ Unlimited matches</li><li style="font-size:13px;color:var(--text2);">✅ Full AI scoring</li><li style="font-size:13px;color:var(--text2);">✅ Advanced filters</li><li style="font-size:13px;color:var(--text2);">✅ Profile boost 2x/month</li><li style="font-size:13px;color:var(--text2);">✅ Priority support</li></ul></div><button class="btn btn-primary btn-full" onclick="toast(\'Payment gateway coming soon! 🚀\',\'info\');closeModal()">Start 7-Day Free Trial</button>',
-  filters:'<h2>Filter Matches</h2><p style="color:var(--text2);margin-bottom:16px;">Narrow down your matches.</p><div style="display:flex;flex-direction:column;gap:14px;"><div class="form-group"><label class="form-label">Role</label><select class="form-select"><option>Any</option><option>Students Only</option><option>Professionals Only</option></select></div><div class="form-group"><label class="form-label">Sleep Schedule</label><select class="form-select"><option>Any</option><option>Night Owl</option><option>Early Bird</option></select></div><button class="btn btn-primary" onclick="toast(\'Filters applied!\',\'success\');closeModal()">Apply Filters</button></div>',
-  editProfile:'<h2>Edit Profile</h2><div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;"><div class="form-group"><label class="form-label">Display Name</label><input class="form-input" id="ep-n" value=""/></div><div class="form-group"><label class="form-label">Bio</label><textarea class="form-input" rows="3" placeholder="Tell roommates about yourself..."></textarea></div><button class="btn btn-primary" onclick="var n=document.getElementById(\'ep-n\');if(n&&n.value.trim()){setUI(n.value.trim(),S.user?S.user.email:\'\');}toast(\'Profile updated ✓\',\'success\');closeModal()">Save Profile</button></div>',
-  deleteAcct:'<h2 style="color:#f87171;">Delete Account</h2><p style="color:var(--text2);margin-bottom:16px;">Cannot be undone.</p><div class="form-group"><label class="form-label">Type DELETE to confirm</label><input class="form-input" id="del-inp" placeholder="DELETE"/></div><button class="btn btn-danger btn-full mt16" onclick="doDelAcct()">Delete My Account Forever</button>',
-  about:'<h2>About Roommate Sync</h2><p style="color:var(--text2);line-height:1.6;margin-top:12px;">AI-powered roommate matching platform. Founded 2024, Nagpur, India. Helping 50,000+ people find their ideal living situations.</p>',
-  contact:'<h2>Contact Us</h2><div style="display:flex;flex-direction:column;gap:12px;margin-top:14px;"><div class="form-group"><label class="form-label">Name</label><input class="form-input" placeholder="Your name"/></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" placeholder="you@example.com"/></div><div class="form-group"><label class="form-label">Message</label><textarea class="form-input" rows="4" placeholder="How can we help?"></textarea></div><button class="btn btn-primary" onclick="toast(\'Message sent!\',\'success\');closeModal()">Send Message</button></div>',
-  privacy:'<h2>Privacy Policy</h2><p style="color:var(--text2);line-height:1.6;margin-top:12px;">We collect only data necessary for our matching service. We never sell your information. Data encrypted with AES-256.</p>',
-  terms:'<h2>Terms of Service</h2><p style="color:var(--text2);line-height:1.6;margin-top:12px;">By using Roommate Sync you agree to use the platform honestly. Fake profiles lead to immediate termination. Users must be 18 or older.</p>',
-  safety:'<h2>Safety Center</h2><p style="color:var(--text2);line-height:1.6;margin-top:12px;">Always meet in public first. Video call before sharing personal details. Report suspicious profiles immediately.</p>',
-  careers:'<h2>Careers</h2><p style="color:var(--text2);line-height:1.6;margin-top:12px;">Hiring: Full-Stack Engineer, Product Designer, Growth Marketer. Send resume to careers@roommatesync.in</p>'
+  forgot:'<h2>Reset password</h2><p class="m-sub">We will email you a reset link.</p><div class="form-group"><label class="form-label" for="r-email">Email</label><input class="form-input" id="r-email" type="email" placeholder="you@example.com"/></div><button class="btn btn-primary btn-full mt16" onclick="doReset()">Send Reset Link</button>',
+  upgrade:'<h2>Upgrade to Pro</h2><p class="m-sub">Unlock unlimited matches.</p><div class="m-price"><div class="amt">₹299<small> /month</small></div><ul><li>Unlimited matches</li><li>Full AI scoring</li><li>Advanced filters</li><li>Profile boost 2x/month</li><li>Priority support</li></ul></div><button class="btn btn-primary btn-full btn-lg" onclick="toast(\'Payment gateway coming soon! 🚀\',\'info\');closeModal()">Start 7-Day Free Trial</button>',
+  filters:'<h2>Filter matches</h2><p class="m-sub">Narrow down your matches.</p><div class="m-stack"><div class="form-group"><label class="form-label">Role</label><select class="form-select"><option>Any</option><option>Students Only</option><option>Professionals Only</option></select></div><div class="form-group"><label class="form-label">Sleep Schedule</label><select class="form-select"><option>Any</option><option>Night Owl</option><option>Early Bird</option></select></div><button class="btn btn-primary" onclick="toast(\'Filters applied!\',\'success\');closeModal()">Apply Filters</button></div>',
+  editProfile:'<h2>Edit profile</h2><div class="m-stack"><div class="form-group"><label class="form-label" for="ep-n">Display Name</label><input class="form-input" id="ep-n" value=""/></div><div class="form-group"><label class="form-label">Bio</label><textarea class="form-input" rows="3" placeholder="Tell roommates about yourself..."></textarea></div><button class="btn btn-primary" onclick="var n=document.getElementById(\'ep-n\');if(n&&n.value.trim()){setUI(n.value.trim(),S.user?S.user.email:\'\');}toast(\'Profile updated ✓\',\'success\');closeModal()">Save Profile</button></div>',
+  deleteAcct:'<h2 class="m-danger-h">Delete account</h2><p class="m-sub">This cannot be undone.</p><div class="form-group"><label class="form-label" for="del-inp">Type DELETE to confirm</label><input class="form-input" id="del-inp" placeholder="DELETE"/></div><button class="btn btn-danger btn-full mt16" onclick="doDelAcct()">Delete My Account Forever</button>',
+  about:'<h2>About Roommate Sync</h2><p class="m-text">AI-powered roommate matching platform. Founded 2024, Nagpur, India. Helping 50,000+ people find their ideal living situations.</p>',
+  contact:'<h2>Contact us</h2><div class="m-stack"><div class="form-group"><label class="form-label">Name</label><input class="form-input" placeholder="Your name"/></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" type="email" placeholder="you@example.com"/></div><div class="form-group"><label class="form-label">Message</label><textarea class="form-input" rows="4" placeholder="How can we help?"></textarea></div><button class="btn btn-primary" onclick="toast(\'Message sent!\',\'success\');closeModal()">Send Message</button></div>',
+  privacy:'<h2>Privacy Policy</h2><p class="m-text">We collect only data necessary for our matching service. We never sell your information. Data encrypted with AES-256.</p>',
+  terms:'<h2>Terms of Service</h2><p class="m-text">By using Roommate Sync you agree to use the platform honestly. Fake profiles lead to immediate termination. Users must be 18 or older.</p>',
+  safety:'<h2>Safety Center</h2><p class="m-text">Always meet in public first. Video call before sharing personal details. Report suspicious profiles immediately.</p>',
+  careers:'<h2>Careers</h2><p class="m-text">Hiring: Full-Stack Engineer, Product Designer, Growth Marketer. Send resume to careers@roommatesync.in</p>'
 };
 
 function openModal(key,data){
   var html;
   if(key==='vp'&&data){
     var col=COLORS[0];
+    var me=S.userDoc||{};
+    var rows=[['Sleep','sleep'],['Cleanliness','clean'],['Social life','social']].map(function(r){
+      var hit=!!(me[r[1]]&&data[r[1]]&&me[r[1]]===data[r[1]]);
+      return '<div class="vp-bd'+(hit?'':' miss')+'"><em>'+r[0]+'</em><div class="bar"><i style="--w:'+(hit?100:0)+'%"></i></div><span>'+(hit?'In sync':'Different')+'</span></div>';
+    }).join('');
     html=
-      '<div style="display:flex;gap:14px;align-items:center;margin-bottom:20px;">'+
-        '<div style="width:60px;height:60px;border-radius:50%;background:'+col+';display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;flex-shrink:0;">'+data.displayName[0]+'</div>'+
-        '<div><h2 style="font-size:20px;">'+data.displayName+'</h2><p style="font-size:13px;color:var(--muted);">'+(data.city||'')+((data.city&&data.role)?' · ':'')+(data.role||'')+'</p></div>'+
-        '<div style="margin-left:auto;text-align:center;"><div style="font-family:Space Grotesk,sans-serif;font-size:28px;font-weight:700;background:linear-gradient(135deg,var(--accent2),var(--accent3));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">'+data._score+'%</div><div style="font-size:10px;color:var(--muted);">Match</div></div>'+
+      '<div class="vp-head">'+
+        '<div class="vp-av" style="background:'+col+'">'+escHtml(data.displayName[0])+'</div>'+
+        '<div><h2>'+escHtml(data.displayName)+'</h2><p class="vp-sub">'+escHtml((data.city||'')+((data.city&&data.role)?' · ':'')+pretty(data.role||''))+'</p></div>'+
       '</div>'+
-      '<p style="font-size:14px;color:var(--text2);line-height:1.65;margin-bottom:16px;">'+(data.bio||'Looking for a compatible roommate.')+'</p>'+
-      '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;">'+
-        (data.role?'<span class="badge badge-pu">'+data.role+'</span>':'')+
-        (data.sleep?'<span class="badge badge-cy">'+data.sleep+'</span>':'')+
-        (data.clean?'<span class="badge badge-gr">'+data.clean+'</span>':'')+
+      '<div class="vp-score '+scoreTier(data._score)+'"><div class="vp-ring" style="--p:'+data._score+';width:68px;height:68px"><span style="font-size:17px">'+data._score+'%</span></div><div class="vp-score-txt"><b>'+scoreWord(data._score)+'</b><span>Compatibility with your lifestyle</span></div></div>'+
+      '<p class="vp-bio">'+escHtml(data.bio||'Looking for a compatible roommate.')+'</p>'+
+      '<div class="vp-breakdown">'+rows+'</div>'+
+      '<div class="vp-tags">'+
+        (data.role?'<span class="badge badge-pu">'+escHtml(pretty(data.role))+'</span>':'')+
+        (data.sleep?'<span class="badge badge-cy">'+escHtml(pretty(data.sleep))+'</span>':'')+
+        (data.clean?'<span class="badge badge-gr">'+escHtml(pretty(data.clean))+'</span>':'')+
       '</div>'+
-      '<div style="display:flex;gap:8px;"><button class="btn btn-primary grow" onclick="startChat(\''+data._uid+'\',\''+data.displayName.replace(/'/g,"\\'")+'\',\''+col+'\');closeModal()">💬 Message</button><button class="btn btn-outline" onclick="closeModal()">Close</button></div>';
+      '<div class="vp-actions"><button class="btn btn-primary grow" onclick="startChat(\''+data._uid+'\',\''+data.displayName.replace(/'/g,"\\'")+'\',\''+col+'\');closeModal()">'+ico('chat')+' Message</button><button class="btn btn-outline" onclick="closeModal()">Close</button></div>';
   } else {
-    html=MODS[key]||('<h2>'+key+'</h2><p style="color:var(--text2);">Coming soon.</p>');
+    html=MODS[key]||('<h2>'+key+'</h2><p class="m-text">Coming soon.</p>');
     if(key==='editProfile'&&S.user) html=html.replace('value=""','value="'+(S.user.name||'')+'"');
   }
   $('modal-body').innerHTML=html;
@@ -716,8 +762,8 @@ function togglePass(id,btn){ var i=$(id); i.type=i.type==='password'?'text':'pas
 function checkStrength(v){
   var s=0;
   if(v.length>=6) s++; if(/[A-Z]/.test(v)) s++; if(/[0-9]/.test(v)) s++; if(/[^A-Za-z0-9]/.test(v)) s++;
-  var c=['#ef4444','#f59e0b','#10b981','#06b6d4'],l=['Weak','Fair','Strong','Very Strong'];
-  ['sg1','sg2','sg3','sg4'].forEach(function(id,i){ var e=$(id); if(e) e.style.background=i<s?c[s-1]:'rgba(255,255,255,.08)'; });
+  var c=['#D93636','#E0A100','#1F9D6B','#1F6B52'],l=['Weak','Fair','Strong','Very Strong'];
+  ['sg1','sg2','sg3','sg4'].forEach(function(id,i){ var e=$(id); if(e) e.style.background=i<s?c[s-1]:''; });
   var lb=$('sg-lbl'); if(lb){ lb.textContent=v.length?(l[s-1]||''):''; lb.style.color=c[s-1]||'var(--muted)'; }
 }
 function showErr(id,msg){ var e=$(id); if(e){ e.textContent=msg; e.classList.remove('hidden'); } }
@@ -730,9 +776,12 @@ function btnLoad(btn,on){ if(on){ btn._orig=btn.innerHTML; btn.innerHTML='<div c
 document.addEventListener('DOMContentLoaded',function(){
   $$('input[type=range]').forEach(function(inp){
     var p=((inp.value-inp.min)/(inp.max-inp.min))*100;
-    inp.style.background='linear-gradient(90deg,var(--accent) '+p+'%,rgba(255,255,255,.06) '+p+'%)';
+    inp.style.background='linear-gradient(90deg,var(--accent) '+p+'%,rgba(23,20,15,.1) '+p+'%)';
   });
   renderNotifs();
+
+  /* Esc closes modal */
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeModal(); });
 
   /* Enter key — login */
   var le=$('l-email'), lp=$('l-pass');
